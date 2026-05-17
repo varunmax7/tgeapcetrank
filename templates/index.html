@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="Predict your TG EAPCET college admission based on rank, caste, gender, and branch preferences. Data from EAPCET 2025 last-rank statements.">
+    <meta name="theme-color" content="#f6f7f9">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>TG EAPCET Rank Predictor — Find Your College</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <header>
+        <h1>TG EAPCET Rank Predictor</h1>
+        <p class="sub">Find colleges you can get based on caste, gender, rank range, and branch. Data: TG EAPCET 2025
+            last-rank statements (Phase 1, Phase 2, Final Phase).</p>
+    </header>
+
+    <main>
+
+        <section class="card">
+            <h2>Filters</h2>
+            <form id="predictor-form">
+
+                <div class="grid">
+                    <div class="field">
+                        <label for="year">Year</label>
+                        <select id="year" name="year" required>
+                            {% for y in years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="caste">Caste</label>
+                        <select id="caste" name="caste" required>
+                            {% for value, label in castes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="gender">Gender</label>
+                        <select id="gender" name="gender" required>
+                            {% for value, label in genders %}<option value="{{ value }}">{{ label }}</option>{% endfor
+                            %}
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="phase">Phase</label>
+                        <select id="phase" name="phase" required>
+                            {% for value, label in phases %}
+                            <option value="{{ value }}" {% if value=='all' %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="rank">Your Rank</label>
+                        <input type="number" id="rank" name="rank" min="1" placeholder="Enter your rank" required
+                            inputmode="numeric">
+                    </div>
+                </div>
+
+                <div class="field full">
+                    <label for="branch_search">Branches <span class="hint">(leave all unchecked for any
+                            branch)</span></label>
+                    <input type="text" id="branch_search" placeholder="Filter branches… e.g. CSE, ECE, AI"
+                        autocomplete="off">
+                    <div class="branch-actions">
+                        <button type="button" id="select-all-branches" class="link">Select all visible</button>
+                        <button type="button" id="clear-branches" class="link">Clear selection</button>
+                        <span id="branch-count" class="selected-count">0 selected</span>
+                    </div>
+                    <div class="branch-list" id="branch-list">
+                        {% for b in branches %}
+                        <label class="branch-chip">
+                            <input type="checkbox" name="branches" value="{{ b.branch_code }}">
+                            <span class="code">{{ b.branch_code }}</span>
+                            <span class="name">{{ b.branch_name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" id="submit-btn">Find Colleges</button>
+                    <button type="reset" id="reset-btn" class="secondary">Reset</button>
+                </div>
+
+            </form>
+        </section>
+
+        <section class="card" id="results-card" hidden>
+            <div class="results-header">
+                <h2>Results <span id="result-count" class="count"></span></h2>
+                <div id="status-msg" class="status"></div>
+            </div>
+
+            <!-- Desktop table view -->
+            <div class="table-wrap">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="closing_rank">Closing Rank <span class="arrow"></span></th>
+                            <th class="sortable" data-sort="inst_code">Code <span class="arrow"></span></th>
+                            <th class="sortable" data-sort="institute_name">Institute <span class="arrow"></span></th>
+                            <th class="sortable" data-sort="place">Place</th>
+                            <th class="sortable" data-sort="branch_code">Branch</th>
+                            <th class="sortable" data-sort="phase">Phase</th>
+                            <th class="sortable" data-sort="college_type">Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Mobile card view -->
+            <div class="mobile-results" id="mobile-results"></div>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>Disclaimer: closing ranks reflect 2025 last-rank statements only. Actual cutoffs in future years will differ.
+            Special category seats (PH/NCC/Sports/CAP) are not included.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>
