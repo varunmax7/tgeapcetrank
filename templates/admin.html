@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - TG EAPCET Rank Predictor</title>
+    <!-- Include Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #f6f7f9; 
+            color: #1f2937; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            padding: 20px;
+        }
+        .header h1 { margin: 0; font-size: 28px; }
+        .header p { color: #6b7280; margin-top: 8px; }
+        .stat-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            text-align: center; 
+            margin-bottom: 20px; 
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .stat-card h2 { 
+            margin: 0; 
+            font-size: 14px; 
+            color: #6b7280; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em;
+        }
+        .stat-card .value { 
+            font-size: 42px; 
+            font-weight: bold; 
+            color: #2563eb; 
+            margin: 10px 0 0; 
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .chart-card h3 { 
+            margin-top: 0; 
+            margin-bottom: 15px; 
+            font-size: 16px; 
+            color: #374151; 
+            border-bottom: 1px solid #f3f4f6;
+            padding-bottom: 10px;
+        }
+        .chart-container { 
+            position: relative; 
+            height: 300px; 
+            width: 100%; 
+        }
+        
+        .nav-back {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .nav-back:hover { text-decoration: underline; }
+
+        @media (min-width: 768px) {
+            .chart-card.full-width { grid-column: 1 / -1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <a href="/" class="nav-back">← Back to Predictor</a>
+    </div>
+
+    <div class="header">
+        <h1>Platform Analytics</h1>
+        <p>TG EAPCET Rank Predictor Engagement Dashboard</p>
+    </div>
+
+    <div class="stat-card">
+        <h2>Total Searches Performed</h2>
+        <div class="value" id="totalSearches">...</div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="chart-card full-width">
+            <h3>Daily Search Traffic</h3>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <h3>Top 10 Most Searched Branches</h3>
+            <div class="chart-container">
+                <canvas id="branchChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>Searches by Caste Category</h3>
+            <div class="chart-container">
+                <canvas id="casteChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <h3>Searches by Gender</h3>
+            <div class="chart-container">
+                <canvas id="genderChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchAnalytics() {
+            try {
+                // Fetch the JSON payload from our new backend API route
+                const response = await fetch('/api/analytics');
+                if (!response.ok) throw new Error("Failed to load");
+                const data = await response.json();
+                
+                // Update Total Searches number
+                document.getElementById('totalSearches').innerText = data.total_searches;
+                
+                // Colors for charts
+                const colors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6'];
+
+                // 1. Daily Trends Chart (Line Graph)
+                const trendCtx = document.getElementById('trendChart').getContext('2d');
+                new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: data.trends.map(t => t.date || 'Unknown'),
+                        datasets: [{
+                            label: 'Searches',
+                            data: data.trends.map(t => t.count),
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: { 
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                    }
+                });
+
+                // 2. Branch Chart (Doughnut Graph)
+                const branchCtx = document.getElementById('branchChart').getContext('2d');
+                new Chart(branchCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.popular_branches.map(b => b.branch),
+                        datasets: [{
+                            data: data.popular_branches.map(b => b.count),
+                            backgroundColor: colors
+                        }]
+                    },
+                    options: { 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right' } }
+                    }
+                });
+
+                // 3. Caste Chart (Bar Graph)
+                const casteCtx = document.getElementById('casteChart').getContext('2d');
+                new Chart(casteCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.castes.map(c => c.caste),
+                        datasets: [{
+                            label: 'Searches',
+                            data: data.castes.map(c => c.count),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: { 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+
+                // 4. Gender Chart (Pie Graph)
+                const genderCtx = document.getElementById('genderChart').getContext('2d');
+                new Chart(genderCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: data.genders.map(g => g.gender),
+                        datasets: [{
+                            data: data.genders.map(g => g.count),
+                            backgroundColor: ['#2563eb', '#f472b6'] // Blue for Boys, Pink for Girls
+                        }]
+                    },
+                    options: { maintainAspectRatio: false }
+                });
+
+            } catch (error) {
+                console.error("Error fetching analytics:", error);
+                document.getElementById('totalSearches').innerText = "Error loading data";
+            }
+        }
+
+        // Run when page loads
+        fetchAnalytics();
+    </script>
+</body>
+</html>

@@ -21,10 +21,34 @@ Run:
 """
 import os
 import sqlite3
-from flask import Flask, request, jsonify, render_template, g
+from functools import wraps
+from flask import Flask, request, jsonify, render_template, g, Response
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database", "eapcet.db")
+
+def init_analytics_db():
+    try:
+        # Ensure database directory exists
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        db = sqlite3.connect(DB_PATH)
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS search_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                rank INTEGER,
+                caste TEXT,
+                gender TEXT,
+                phase TEXT,
+                branches TEXT
+            )
+        ''')
+        db.commit()
+        db.close()
+    except Exception as e:
+        print(f"Error initializing analytics db: {e}")
+
+init_analytics_db()
 
 app = Flask(__name__)
 
@@ -149,6 +173,25 @@ def predict():
     filters, err = parse_filters(request.args)
     if err:
         return jsonify({"error": err}), 400
+        
+    # Log the user's search activity
+    try:
+        db = get_db()
+        branches_str = ",".join(filters.get("branches", []))
+        db.execute('''
+            INSERT INTO search_logs (rank, caste, gender, phase, branches)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            filters.get("rank"), 
+            filters.get("caste"), 
+            filters.get("gender"), 
+            filters.get("phase"), 
+            branches_str
+        ))
+        db.commit()
+    except Exception as e:
+        print(f"Error logging search activity: {e}")
+
     results = query_colleges(filters)
     return jsonify({"count": len(results), "filters": filters, "results": results})
 
@@ -176,6 +219,69 @@ def api_meta():
         "genders": [{"value": v, "label": l} for v, l in GENDER_CHOICES],
         "phases": [{"value": v, "label": l} for v, l in PHASE_CHOICES],
         "years": YEAR_CHOICES,
+    })
+
+
+# ---------- Admin / Analytics ----------
+def check_auth(username, password):
+    """Check if a username / password combination is valid."""
+    return username == 'admin' and password == 'admin123'
+
+def authenticate():
+    """Sends a 401 response that enables basic auth"""
+    return Response(
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 401,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route("/admin")
+@requires_auth
+def admin():
+    return render_template("admin.html")
+
+@app.route("/api/analytics")
+@requires_auth
+def api_analytics():
+    db = get_db()
+    
+    # Total searches
+    total_searches = db.execute("SELECT COUNT(*) FROM search_logs").fetchone()[0]
+    
+    # Searches by caste
+    castes = [dict(r) for r in db.execute("SELECT caste, COUNT(*) as count FROM search_logs GROUP BY caste").fetchall()]
+    
+    # Searches by gender
+    genders = [dict(r) for r in db.execute("SELECT gender, COUNT(*) as count FROM search_logs GROUP BY gender").fetchall()]
+    
+    # Branches parsing
+    branches_raw = [r[0] for r in db.execute("SELECT branches FROM search_logs WHERE branches != ''").fetchall()]
+    branch_counts = {}
+    for row in branches_raw:
+        for branch in row.split(','):
+            branch = branch.strip()
+            if branch:
+                branch_counts[branch] = branch_counts.get(branch, 0) + 1
+                
+    popular_branches = [{"branch": k, "count": v} for k, v in sorted(branch_counts.items(), key=lambda item: item[1], reverse=True)[:10]]
+    
+    # Daily trends (last 7 days)
+    trends = [dict(r) for r in db.execute("SELECT date(timestamp) as date, COUNT(*) as count FROM search_logs GROUP BY date(timestamp) ORDER BY date(timestamp) DESC LIMIT 7").fetchall()]
+
+    return jsonify({
+        "total_searches": total_searches,
+        "castes": castes,
+        "genders": genders,
+        "popular_branches": popular_branches,
+        "trends": trends[::-1]  # Chronological order
     })
 
 
