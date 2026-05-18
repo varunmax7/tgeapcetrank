@@ -60,10 +60,49 @@ main {
 
 footer {
     max-width: 1200px;
-    margin: 0 auto;
-    padding: 16px 24px 32px;
+    margin: 40px auto 0;
+    padding: 32px 24px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.credits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: space-between;
+}
+
+.credits p {
+    margin: 0;
+    line-height: 1.6;
+}
+
+.credits strong {
+    color: var(--text);
+    font-size: 14px;
+    display: inline-block;
+    margin-bottom: 4px;
+}
+
+.credits span {
     color: var(--muted);
     font-size: 12px;
+}
+
+.disclaimer {
+    margin: 0;
+    font-size: 12px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--secondary);
+    text-align: center;
 }
 
 .card {
@@ -591,8 +630,12 @@ tbody tr:last-child td {
     }
 
     footer {
-        padding: 12px 12px 28px;
-        font-size: 11px;
+        padding: 24px 12px 32px;
+    }
+
+    .credits {
+        flex-direction: column;
+        gap: 16px;
     }
 }
 
