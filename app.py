@@ -225,7 +225,7 @@ def api_meta():
 # ---------- Admin / Analytics ----------
 def check_auth(username, password):
     """Check if a username / password combination is valid."""
-    return username == 'admin' and password == 'admin123'
+    return username == 'techmax' and password == 'mgitgriet123'
 
 def authenticate():
     """Sends a 401 response that enables basic auth"""
