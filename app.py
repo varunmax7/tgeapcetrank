@@ -276,12 +276,35 @@ def api_analytics():
     # Daily trends (last 7 days)
     trends = [dict(r) for r in db.execute("SELECT date(timestamp) as date, COUNT(*) as count FROM search_logs GROUP BY date(timestamp) ORDER BY date(timestamp) DESC LIMIT 7").fetchall()]
 
+    # Rank Ranges calculation
+    ranks = [r[0] for r in db.execute("SELECT rank FROM search_logs WHERE rank IS NOT NULL").fetchall()]
+    rank_ranges = {
+        "1 - 10k": 0,
+        "10k - 25k": 0,
+        "25k - 50k": 0,
+        "50k - 75k": 0,
+        "75k - 100k": 0,
+        "100k+": 0
+    }
+    for rank in ranks:
+        try:
+            r = int(rank)
+            if r <= 10000: rank_ranges["1 - 10k"] += 1
+            elif r <= 25000: rank_ranges["10k - 25k"] += 1
+            elif r <= 50000: rank_ranges["25k - 50k"] += 1
+            elif r <= 75000: rank_ranges["50k - 75k"] += 1
+            elif r <= 100000: rank_ranges["75k - 100k"] += 1
+            else: rank_ranges["100k+"] += 1
+        except (ValueError, TypeError):
+            pass
+
     return jsonify({
         "total_searches": total_searches,
         "castes": castes,
         "genders": genders,
         "popular_branches": popular_branches,
-        "trends": trends[::-1]  # Chronological order
+        "trends": trends[::-1],  # Chronological order
+        "rank_ranges": rank_ranges
     })
 
 
