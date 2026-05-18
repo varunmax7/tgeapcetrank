@@ -248,6 +248,32 @@ def requires_auth(f):
 def admin():
     return render_template("admin.html")
 
+@app.route("/admin/export/csv")
+@requires_auth
+def export_csv():
+    import csv
+    import io
+    from flask import Response
+    
+    db = get_db()
+    rows = db.execute("SELECT * FROM search_logs ORDER BY timestamp DESC").fetchall()
+    
+    si = io.StringIO()
+    cw = csv.writer(si)
+    
+    if rows:
+        cw.writerow(rows[0].keys())
+        for row in rows:
+            cw.writerow([row[col] for col in rows[0].keys()])
+    else:
+        cw.writerow(["id", "timestamp", "rank", "caste", "gender", "phase", "branches"])
+        
+    return Response(
+        si.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=search_logs.csv"}
+    )
+
 @app.route("/api/analytics")
 @requires_auth
 def api_analytics():
