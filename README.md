@@ -193,6 +193,18 @@ The data was extracted from official PDF documents using `pdfplumber`, cleaned w
 
 ---
 
+## 👨‍🏫 Credits
+
+**Under the Guidance of:**<br>
+Prof. P Gopala Krishna<br>
+*Dean Assessment and Accreditations, GRIET Hyderabad*
+
+**Developed by Team TECH MAX:**<br>
+Varun Ramavath *(Research Intern, MGIT Hyderabad)*<br>
+Rishanth Patkar *(Research Intern, MGIT Hyderabad)*
+
+---
+
 ## ⚠️ Disclaimer
 
 - Closing ranks shown are based on **TG EAPCET 2025 last-rank statements only**
