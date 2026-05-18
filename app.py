@@ -256,7 +256,14 @@ def export_csv():
     from flask import Response
     
     db = get_db()
-    rows = db.execute("SELECT * FROM search_logs ORDER BY timestamp DESC").fetchall()
+    
+    date_filter = request.args.get("filter", "all")
+    where_clause = ""
+    if date_filter == "today": where_clause = "WHERE timestamp >= date('now', 'localtime')"
+    elif date_filter == "7days": where_clause = "WHERE timestamp >= date('now', '-7 days', 'localtime')"
+    elif date_filter == "30days": where_clause = "WHERE timestamp >= date('now', '-30 days', 'localtime')"
+    
+    rows = db.execute(f"SELECT * FROM search_logs {where_clause} ORDER BY timestamp DESC").fetchall()
     
     si = io.StringIO()
     cw = csv.writer(si)
@@ -279,17 +286,30 @@ def export_csv():
 def api_analytics():
     db = get_db()
     
+    date_filter = request.args.get("filter", "all")
+    where_clause = ""
+    and_clause = ""
+    if date_filter == "today": 
+        where_clause = "WHERE timestamp >= date('now', 'localtime')"
+        and_clause = "AND timestamp >= date('now', 'localtime')"
+    elif date_filter == "7days": 
+        where_clause = "WHERE timestamp >= date('now', '-7 days', 'localtime')"
+        and_clause = "AND timestamp >= date('now', '-7 days', 'localtime')"
+    elif date_filter == "30days": 
+        where_clause = "WHERE timestamp >= date('now', '-30 days', 'localtime')"
+        and_clause = "AND timestamp >= date('now', '-30 days', 'localtime')"
+    
     # Total searches
-    total_searches = db.execute("SELECT COUNT(*) FROM search_logs").fetchone()[0]
+    total_searches = db.execute(f"SELECT COUNT(*) FROM search_logs {where_clause}").fetchone()[0]
     
     # Searches by caste
-    castes = [dict(r) for r in db.execute("SELECT caste, COUNT(*) as count FROM search_logs GROUP BY caste").fetchall()]
+    castes = [dict(r) for r in db.execute(f"SELECT caste, COUNT(*) as count FROM search_logs {where_clause} GROUP BY caste").fetchall()]
     
     # Searches by gender
-    genders = [dict(r) for r in db.execute("SELECT gender, COUNT(*) as count FROM search_logs GROUP BY gender").fetchall()]
+    genders = [dict(r) for r in db.execute(f"SELECT gender, COUNT(*) as count FROM search_logs {where_clause} GROUP BY gender").fetchall()]
     
     # Branches parsing
-    branches_raw = [r[0] for r in db.execute("SELECT branches FROM search_logs WHERE branches != ''").fetchall()]
+    branches_raw = [r[0] for r in db.execute(f"SELECT branches FROM search_logs WHERE branches != '' {and_clause}").fetchall()]
     branch_counts = {}
     for row in branches_raw:
         for branch in row.split(','):
@@ -299,11 +319,11 @@ def api_analytics():
                 
     popular_branches = [{"branch": k, "count": v} for k, v in sorted(branch_counts.items(), key=lambda item: item[1], reverse=True)[:10]]
     
-    # Daily trends (last 7 days)
-    trends = [dict(r) for r in db.execute("SELECT date(timestamp) as date, COUNT(*) as count FROM search_logs GROUP BY date(timestamp) ORDER BY date(timestamp) DESC LIMIT 7").fetchall()]
+    # Daily trends (last 30 days max for UI)
+    trends = [dict(r) for r in db.execute(f"SELECT date(timestamp) as date, COUNT(*) as count FROM search_logs {where_clause} GROUP BY date(timestamp) ORDER BY date(timestamp) DESC LIMIT 30").fetchall()]
 
     # Rank Ranges calculation
-    ranks = [r[0] for r in db.execute("SELECT rank FROM search_logs WHERE rank IS NOT NULL").fetchall()]
+    ranks = [r[0] for r in db.execute(f"SELECT rank FROM search_logs WHERE rank IS NOT NULL {and_clause}").fetchall()]
     rank_ranges = {
         "1 - 10k": 0,
         "10k - 25k": 0,

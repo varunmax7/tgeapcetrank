@@ -97,9 +97,17 @@
     <div class="header">
         <h1>Platform Analytics</h1>
         <p>TG EAPCET Rank Predictor Engagement Dashboard</p>
-        <a href="/admin/export/csv" style="display: inline-block; margin-top: 15px; background: #10b981; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.2s;">
-            📥 Export Data to CSV
-        </a>
+        <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <select id="dateFilter" onchange="fetchAnalytics()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 14px; background: white;">
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="30days">Last 30 Days</option>
+            </select>
+            <a id="exportBtn" href="/admin/export/csv?filter=all" style="background: #10b981; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.2s;">
+                📥 Export Data to CSV
+            </a>
+        </div>
     </div>
 
     <div class="stat-card">
@@ -145,10 +153,15 @@
     </div>
 
     <script>
+        let chartInstances = {};
+
         async function fetchAnalytics() {
+            const filterValue = document.getElementById('dateFilter').value;
+            document.getElementById('exportBtn').href = `/admin/export/csv?filter=${filterValue}`;
+            
             try {
                 // Fetch the JSON payload from our new backend API route
-                const response = await fetch('/api/analytics');
+                const response = await fetch(`/api/analytics?filter=${filterValue}`);
                 if (!response.ok) throw new Error("Failed to load");
                 const data = await response.json();
                 
@@ -158,97 +171,78 @@
                 // Colors for charts
                 const colors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6'];
 
+                function updateChart(id, type, dataConfig, optionsConfig) {
+                    if (chartInstances[id]) { chartInstances[id].destroy(); }
+                    const ctx = document.getElementById(id).getContext('2d');
+                    chartInstances[id] = new Chart(ctx, { type: type, data: dataConfig, options: optionsConfig });
+                }
+
                 // 1. Daily Trends Chart (Line Graph)
-                const trendCtx = document.getElementById('trendChart').getContext('2d');
-                new Chart(trendCtx, {
-                    type: 'line',
-                    data: {
-                        labels: data.trends.map(t => t.date || 'Unknown'),
-                        datasets: [{
-                            label: 'Searches',
-                            data: data.trends.map(t => t.count),
-                            borderColor: '#2563eb',
-                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                            fill: true,
-                            tension: 0.3
-                        }]
-                    },
-                    options: { 
-                        maintainAspectRatio: false,
-                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                    }
+                updateChart('trendChart', 'line', {
+                    labels: data.trends.map(t => t.date || 'Unknown'),
+                    datasets: [{
+                        label: 'Searches',
+                        data: data.trends.map(t => t.count),
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                }, { 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                 });
 
                 // 2. Branch Chart (Doughnut Graph)
-                const branchCtx = document.getElementById('branchChart').getContext('2d');
-                new Chart(branchCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.popular_branches.map(b => b.branch),
-                        datasets: [{
-                            data: data.popular_branches.map(b => b.count),
-                            backgroundColor: colors
-                        }]
-                    },
-                    options: { 
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right' } }
-                    }
+                updateChart('branchChart', 'doughnut', {
+                    labels: data.popular_branches.map(b => b.branch),
+                    datasets: [{
+                        data: data.popular_branches.map(b => b.count),
+                        backgroundColor: colors
+                    }]
+                }, { 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right' } }
                 });
 
                 // 3. Caste Chart (Bar Graph)
-                const casteCtx = document.getElementById('casteChart').getContext('2d');
-                new Chart(casteCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.castes.map(c => c.caste),
-                        datasets: [{
-                            label: 'Searches',
-                            data: data.castes.map(c => c.count),
-                            backgroundColor: '#3b82f6',
-                            borderRadius: 4
-                        }]
-                    },
-                    options: { 
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true } }
-                    }
+                updateChart('casteChart', 'bar', {
+                    labels: data.castes.map(c => c.caste),
+                    datasets: [{
+                        label: 'Searches',
+                        data: data.castes.map(c => c.count),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 4
+                    }]
+                }, { 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
                 });
 
                 // 4. Gender Chart (Pie Graph)
-                const genderCtx = document.getElementById('genderChart').getContext('2d');
-                new Chart(genderCtx, {
-                    type: 'pie',
-                    data: {
-                        labels: data.genders.map(g => g.gender),
-                        datasets: [{
-                            data: data.genders.map(g => g.count),
-                            backgroundColor: ['#2563eb', '#f472b6'] // Blue for Boys, Pink for Girls
-                        }]
-                    },
-                    options: { maintainAspectRatio: false }
-                });
+                updateChart('genderChart', 'pie', {
+                    labels: data.genders.map(g => g.gender),
+                    datasets: [{
+                        data: data.genders.map(g => g.count),
+                        backgroundColor: ['#2563eb', '#f472b6'] // Blue for Boys, Pink for Girls
+                    }]
+                }, { maintainAspectRatio: false });
 
                 // 5. Rank Chart (Bar Graph)
                 if (data.rank_ranges) {
-                    const rankCtx = document.getElementById('rankChart').getContext('2d');
-                    new Chart(rankCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: Object.keys(data.rank_ranges),
-                            datasets: [{
-                                label: 'Number of Searches',
-                                data: Object.values(data.rank_ranges),
-                                backgroundColor: '#8b5cf6',
-                                borderRadius: 4
-                            }]
-                        },
-                        options: { 
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                        }
+                    updateChart('rankChart', 'bar', {
+                        labels: Object.keys(data.rank_ranges),
+                        datasets: [{
+                            label: 'Number of Searches',
+                            data: Object.values(data.rank_ranges),
+                            backgroundColor: '#8b5cf6',
+                            borderRadius: 4
+                        }]
+                    }, { 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                     });
                 }
 
